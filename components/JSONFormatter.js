@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, Copy } from 'lucide-react';
+import { Moon, Sun, Copy, ChevronDown, ChevronRight } from 'lucide-react';
 
 const JSONFormatter = () => {
   const [input, setInput] = useState('');
-  const [output, setOutput] = useState('');
-  const [highlightedOutput, setHighlightedOutput] = useState('');
+  const [parsedData, setParsedData] = useState(null);
   const [error, setError] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState(new Set());
 
   // Effect to check system preference for dark mode
   useEffect(() => {
@@ -35,55 +35,52 @@ const JSONFormatter = () => {
     setDarkMode(!darkMode);
   };
 
-  // Create syntax-highlighted HTML from JSON
-  const highlightJSON = (json) => {
-    if (!json) return '';
-    
-    // Replace with HTML for syntax highlighting
-    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-      let cls = 'json-number';
-      if (/^"/.test(match)) {
-        if (/:$/.test(match)) {
-          cls = 'json-key';
-          // Remove quotes and colon from the key
-          match = match.replace(/"|:$/g, '');
-          // Add a specific styling for keys
-          return `<span class="${cls}">"${match}"</span><span class="json-punctuation">:</span>`;
-        } else {
-          cls = 'json-string';
-        }
-      } else if (/true|false/.test(match)) {
-        cls = 'json-boolean';
-      } else if (/null/.test(match)) {
-        cls = 'json-null';
-      }
-      return `<span class="${cls}">${match}</span>`;
-    })
-    // Add syntax highlighting for brackets and commas
-    .replace(/[[\]{}]/g, match => `<span class="json-bracket">${match}</span>`)
-    .replace(/,/g, '<span class="json-punctuation">,</span>');
-  };
-
   // Format JSON
   const formatJSON = () => {
     if (!input.trim()) {
       setError('Пожалуйста, введите JSON для форматирования');
-      setOutput('');
-      setHighlightedOutput('');
+      setParsedData(null);
       return;
     }
 
     try {
       const parsedJSON = JSON.parse(input);
-      const formattedJSON = JSON.stringify(parsedJSON, null, 2);
-      setOutput(formattedJSON);
-      setHighlightedOutput(highlightJSON(formattedJSON));
+      setParsedData(parsedJSON);
       setError('');
+      
+      // Initialize expanded nodes for the first two levels
+      const initialExpandedNodes = new Set();
+      expandInitialNodes(parsedJSON, '', initialExpandedNodes, 0, 2);
+      setExpandedNodes(initialExpandedNodes);
     } catch (err) {
       setError(`Ошибка: ${err.message}`);
-      setOutput('');
-      setHighlightedOutput('');
+      setParsedData(null);
     }
+  };
+
+  // Recursively expand nodes up to the specified level
+  const expandInitialNodes = (data, path, expandedSet, currentLevel, maxLevel) => {
+    if (currentLevel >= maxLevel) return;
+    
+    if (typeof data === 'object' && data !== null) {
+      expandedSet.add(path);
+      
+      Object.keys(data).forEach(key => {
+        const newPath = path ? `${path}.${key}` : key;
+        expandInitialNodes(data[key], newPath, expandedSet, currentLevel + 1, maxLevel);
+      });
+    }
+  };
+
+  // Toggle node expansion
+  const toggleNode = (path) => {
+    const newExpandedNodes = new Set(expandedNodes);
+    if (newExpandedNodes.has(path)) {
+      newExpandedNodes.delete(path);
+    } else {
+      newExpandedNodes.add(path);
+    }
+    setExpandedNodes(newExpandedNodes);
   };
 
   // Format JSON on pressing Ctrl+Enter or Cmd+Enter
@@ -95,8 +92,8 @@ const JSONFormatter = () => {
 
   // Copy formatted JSON to clipboard
   const copyToClipboard = () => {
-    if (output) {
-      navigator.clipboard.writeText(output)
+    if (parsedData) {
+      navigator.clipboard.writeText(JSON.stringify(parsedData, null, 2))
         .then(() => {
           setCopySuccess(true);
           setTimeout(() => setCopySuccess(false), 2000);
@@ -116,9 +113,98 @@ const JSONFormatter = () => {
   // Clear both input and output
   const clearAll = () => {
     setInput('');
-    setOutput('');
-    setHighlightedOutput('');
+    setParsedData(null);
     setError('');
+  };
+
+  // Render a JSON node
+  const renderJSONNode = (data, path = '', depth = 0) => {
+    if (data === null) {
+      return <span className="json-null ml-2">null</span>;
+    }
+    
+    if (typeof data !== 'object') {
+      const valueClass = 
+        typeof data === 'string' ? 'json-string' :
+        typeof data === 'number' ? 'json-number' :
+        typeof data === 'boolean' ? 'json-boolean' : '';
+      
+      return <span className={`${valueClass} ml-2`}>{
+        typeof data === 'string' ? `"${data}"` : 
+        String(data)
+      }</span>;
+    }
+    
+    const isArray = Array.isArray(data);
+    const items = isArray ? data : Object.keys(data);
+    const isExpanded = expandedNodes.has(path);
+    const hasChildren = items.length > 0;
+    const childrenCount = items.length;
+    
+    const paddingLeft = `${depth * 1.5}rem`;
+    
+    return (
+      <div className="flex flex-col">
+        <div 
+          className="flex items-center cursor-pointer"
+          style={{ paddingLeft }}
+          onClick={() => hasChildren && toggleNode(path)}
+        >
+          {hasChildren ? (
+            isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />
+          ) : (
+            <span className="w-4" />
+          )}
+          
+          {path ? (
+            <span className="json-key">{path.split('.').pop()}</span>
+          ) : (
+            <span className={isArray ? "json-bracket" : "json-key"}>
+              {isArray ? `ARRAY [${childrenCount}]` : `OBJECT {${childrenCount}}`}
+            </span>
+          )}
+          
+          {!isExpanded && hasChildren && (
+            <span className="text-gray-500 ml-2">
+              {isArray ? `[${childrenCount}]` : `{${childrenCount}}`}
+            </span>
+          )}
+        </div>
+        
+        {isExpanded && hasChildren && (
+          <div className="ml-4">
+            {isArray ? (
+              items.map((item, index) => (
+                <div key={index} className="flex flex-col">
+                  <div className="flex items-center">
+                    {renderJSONNode(item, `${path}[${index}]`, depth + 1)}
+                  </div>
+                </div>
+              ))
+            ) : (
+              Object.keys(data).map((key) => (
+                <div key={key} className="flex flex-col">
+                  <div className="flex items-center">
+                    {typeof data[key] === 'object' && data[key] !== null ? (
+                      renderJSONNode(
+                        data[key], 
+                        path ? `${path}.${key}` : key, 
+                        depth + 1
+                      )
+                    ) : (
+                      <div className="flex items-center" style={{ paddingLeft: `${(depth + 1) * 1.5}rem` }}>
+                        <span className="json-key">{key}</span>
+                        {renderJSONNode(data[key])}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -175,8 +261,8 @@ const JSONFormatter = () => {
 
           <div className="flex flex-col">
             <div className="flex justify-between items-center mb-2">
-              <label className="font-semibold">Отформатированный JSON:</label>
-              {output && (
+              <label className="font-semibold">Иерархический просмотр JSON:</label>
+              {parsedData && (
                 <button 
                   onClick={copyToClipboard} 
                   className={`flex items-center px-3 py-1 rounded text-sm ${
@@ -189,13 +275,33 @@ const JSONFormatter = () => {
                 </button>
               )}
             </div>
+            
+            <div className="mb-3">
+              <button 
+                onClick={formatJSON} 
+                className={`px-4 py-2 rounded font-semibold ${
+                  darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
+                } text-white`}
+                aria-label="Форматировать JSON"
+              >
+                Форматировать JSON
+              </button>
+            </div>
+            
             <div 
               className={`p-4 rounded border h-96 overflow-auto font-mono ${
                 darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'
               }`}
               aria-label="Отформатированный JSON"
-              dangerouslySetInnerHTML={{ __html: highlightedOutput }}
-            />
+            >
+              {parsedData ? (
+                renderJSONNode(parsedData)
+              ) : (
+                <div className="text-gray-400 italic">
+                  Здесь будет отображаться структурированный JSON
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -204,18 +310,6 @@ const JSONFormatter = () => {
             {error}
           </div>
         )}
-
-        <div className="mt-6 flex justify-center">
-          <button 
-            onClick={formatJSON} 
-            className={`px-6 py-3 rounded font-semibold ${
-              darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
-            } text-white`}
-            aria-label="Форматировать JSON"
-          >
-            Форматировать JSON
-          </button>
-        </div>
       </main>
 
       <footer className={`py-4 px-6 text-center ${darkMode ? 'bg-gray-800' : 'bg-gray-200'}`}>
