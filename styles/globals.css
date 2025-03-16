@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Additional custom styles */
+/* Base styles */
 html,
 body {
   padding: 0;
@@ -15,8 +15,22 @@ body {
   box-sizing: border-box;
 }
 
-/* JSON syntax highlighting for light mode */
+/* Light mode colors */
 :root {
+  --background-color: #f3f4f6;
+  --text-color: #1f2937;
+  --card-background: #ffffff;
+  --border-color: #e5e7eb;
+  --button-bg: #e5e7eb;
+  --button-hover: #d1d5db;
+  --button-primary-bg: #3b82f6;
+  --button-primary-hover: #2563eb;
+  --button-primary-text: #ffffff;
+  --error-bg: #fee2e2;
+  --error-border: #fca5a5;
+  --error-text: #b91c1c;
+  
+  /* JSON syntax highlighting for light mode */
   --json-key-color: #0550ae;
   --json-string-color: #690;
   --json-number-color: #905;
@@ -26,8 +40,22 @@ body {
   --json-punctuation-color: #777;
 }
 
-/* JSON syntax highlighting for dark mode */
-.bg-gray-900 {
+/* Dark mode colors */
+.dark-mode {
+  --background-color: #111827;
+  --text-color: #e5e7eb;
+  --card-background: #1f2937;
+  --border-color: #374151;
+  --button-bg: #374151;
+  --button-hover: #4b5563;
+  --button-primary-bg: #3b82f6;
+  --button-primary-hover: #2563eb;
+  --button-primary-text: #ffffff;
+  --error-bg: #7f1d1d;
+  --error-border: #b91c1c;
+  --error-text: #fca5a5;
+  
+  /* JSON syntax highlighting for dark mode */
   --json-key-color: #5eb3fd;
   --json-string-color: #addb67;
   --json-number-color: #ff9d9a;
@@ -37,7 +65,199 @@ body {
   --json-punctuation-color: #8b8b8b;
 }
 
-/* Syntax highlighting styles */
+/* App container */
+.app-container {
+  min-height: 100vh;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Input view */
+.input-view {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Result view */
+.result-view {
+  padding: 0;
+}
+
+/* Input container */
+.input-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 1rem;
+}
+
+/* Textarea wrapper for positioning the clear button */
+.textarea-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* JSON input textarea */
+.json-input {
+  width: 100%;
+  height: 24rem;
+  padding: 1rem;
+  font-family: monospace;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-background);
+  color: var(--text-color);
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.json-input:focus {
+  outline: none;
+  border-color: var(--button-primary-bg);
+}
+
+/* Clear button (X) */
+.clear-button {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-button:hover {
+  opacity: 1;
+  background-color: var(--button-bg);
+}
+
+/* Input actions */
+.input-actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Paste button */
+.paste-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.paste-button:hover {
+  background-color: var(--button-hover);
+}
+
+/* Format button */
+.format-button {
+  position: fixed;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: background-color 0.2s;
+}
+
+.format-button:hover {
+  background-color: var(--button-primary-hover);
+}
+
+/* Result container */
+.result-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Back button */
+.back-button {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background-color: var(--button-primary-hover);
+}
+
+/* Result content */
+.result-content {
+  margin-top: 3rem;
+  padding: 1rem;
+  background-color: var(--card-background);
+  font-size: 0.875rem;
+  overflow-x: auto;
+}
+
+/* Error message */
+.error-message {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
+  border-radius: 0.375rem;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: background-color 0.2s;
+}
+
+.theme-toggle:hover {
+  background-color: var(--button-hover);
+}
+
+/* JSON syntax highlighting */
 .json-key {
   color: var(--json-key-color);
   font-weight: bold;
