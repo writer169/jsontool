@@ -15,23 +15,56 @@ body {
   box-sizing: border-box;
 }
 
-/* For syntax highlighting in formatted JSON */
+/* JSON syntax highlighting for light mode */
+:root {
+  --json-key-color: #0550ae;
+  --json-string-color: #690;
+  --json-number-color: #905;
+  --json-boolean-color: #219;
+  --json-null-color: #708;
+  --json-bracket-color: #444;
+  --json-punctuation-color: #777;
+}
+
+/* JSON syntax highlighting for dark mode */
+.bg-gray-900 {
+  --json-key-color: #5eb3fd;
+  --json-string-color: #addb67;
+  --json-number-color: #ff9d9a;
+  --json-boolean-color: #7fdbca;
+  --json-null-color: #c792ea;
+  --json-bracket-color: #d9d9d9;
+  --json-punctuation-color: #8b8b8b;
+}
+
+/* Syntax highlighting styles */
 .json-key {
-  color: #ff79c6;
+  color: var(--json-key-color);
+  font-weight: bold;
 }
 
 .json-string {
-  color: #f1fa8c;
+  color: var(--json-string-color);
 }
 
 .json-number {
-  color: #bd93f9;
+  color: var(--json-number-color);
 }
 
 .json-boolean {
-  color: #8be9fd;
+  color: var(--json-boolean-color);
+  font-weight: bold;
 }
 
 .json-null {
-  color: #ff5555;
+  color: var(--json-null-color);
+  font-weight: bold;
+}
+
+.json-bracket {
+  color: var(--json-bracket-color);
+}
+
+.json-punctuation {
+  color: var(--json-punctuation-color);
 }
