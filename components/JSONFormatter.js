@@ -26,11 +26,7 @@ const JSONFormatter = () => {
     }
   }, [darkMode]);
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
-
-  // Функция форматирования JSON; можно передать текст напрямую
+  // Форматирование JSON
   const formatJSON = (textInput) => {
     const jsonText = textInput !== undefined ? textInput : input;
     if (!jsonText.trim()) {
@@ -52,7 +48,6 @@ const JSONFormatter = () => {
     }
   };
 
-  // Раскрытие узлов до 2-го уровня
   const expandInitialNodes = (data, path, expandedSet, currentLevel, maxLevel) => {
     if (currentLevel >= maxLevel) return;
     if (typeof data === 'object' && data !== null) {
@@ -64,7 +59,6 @@ const JSONFormatter = () => {
     }
   };
 
-  // Переключение раскрытия узла
   const toggleNode = (path) => {
     const newExpandedNodes = new Set(expandedNodes);
     if (newExpandedNodes.has(path)) {
@@ -75,7 +69,7 @@ const JSONFormatter = () => {
     setExpandedNodes(newExpandedNodes);
   };
 
-  // Функция для чтения из буфера обмена; после вставки сразу форматируем
+  // Чтение из буфера и сразу форматирование
   const pasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -86,19 +80,10 @@ const JSONFormatter = () => {
     }
   };
 
-  const clearAll = () => {
-    setInput('');
-    setParsedData(null);
-    setError('');
-    setShowResult(false);
-  };
-
-  // Функция возврата к форме ввода
   const goBack = () => {
     setShowResult(false);
   };
 
-  // Рендеринг узла JSON
   const renderJSONNode = (data, path = '', depth = 0) => {
     if (data === null) {
       return <span className="json-null ml-2">null</span>;
@@ -170,59 +155,38 @@ const JSONFormatter = () => {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col ${darkMode ? 'bg-gray-900 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>
-      {/* Плавающий переключатель темы */}
-      <button 
-        onClick={toggleDarkMode} 
-        className={`fixed top-4 right-4 p-2 rounded-full ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
-        aria-label={darkMode ? "Включить светлую тему" : "Включить темную тему"}
-      >
-        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-      </button>
-      
-      <main className="flex-grow container mx-auto p-6 max-w-6xl">
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>
+      <main className="p-4">
         {showResult ? (
-          // Отображение результата на всю страницу после форматирования
           <div>
-            <div className="flex justify-end mb-4">
-              <button 
-                onClick={goBack} 
-                className="px-3 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                Вернуться к вводу
-              </button>
-            </div>
-            <div 
-              className="p-4 rounded border overflow-auto font-mono bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-              aria-label="Отформатированный JSON"
+            {/* Кнопка "Вернуться к вводу" фиксирована вверху и отцентрирована */}
+            <button 
+              onClick={goBack} 
+              className="fixed top-0 left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white z-10"
             >
+              Вернуться к вводу
+            </button>
+            {/* Контейнер результата: без боковых отступов, белый фон в дневном режиме, текст уменьшен */}
+            <div className="mt-12 w-full p-4 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm overflow-auto">
               {renderJSONNode(parsedData)}
             </div>
           </div>
         ) : (
-          // Форма ввода (одна колонка)
-          <div className="flex flex-col">
-            <div className="flex justify-end items-center mb-2">
-              <button 
-                onClick={pasteFromClipboard}
-                className={`px-3 py-1 rounded ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
-              >
-                Вставить
-              </button>
-              <button 
-                onClick={clearAll} 
-                className={`px-3 py-1 rounded text-sm ml-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
-              >
-                Очистить
-              </button>
-            </div>
+          <div className="flex flex-col items-center">
+            {/* Кнопка "Вставить из буфера" по центру */}
+            <button 
+              onClick={pasteFromClipboard}
+              className={`mb-4 px-4 py-2 rounded ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+            >
+              Вставить из буфера
+            </button>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') formatJSON();
               }}
-              className={`p-4 rounded border h-96 font-mono ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'}`}
+              className={`w-full p-4 rounded border h-96 font-mono ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'}`}
               placeholder="Вставьте или введите JSON здесь..."
               aria-label="Поле ввода JSON"
             />
@@ -234,6 +198,14 @@ const JSONFormatter = () => {
           </div>
         )}
       </main>
+      {/* Кнопка переключения темы, фиксирована внизу и отцентрирована */}
+      <button 
+        onClick={() => setDarkMode(!darkMode)} 
+        className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 p-2 rounded-full ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+        aria-label={darkMode ? "Включить светлую тему" : "Включить темную тему"}
+      >
+        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
     </div>
   );
 };
