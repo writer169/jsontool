@@ -207,7 +207,7 @@ const JSONFormatter = () => {
                 onClick={pasteFromClipboard}
                 className={`px-3 py-1 rounded ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
               >
-                Вставить из буфера
+                Вставить
               </button>
               <button 
                 onClick={clearAll} 
