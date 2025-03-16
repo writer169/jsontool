@@ -4,6 +4,7 @@ import { Moon, Sun, Copy } from 'lucide-react';
 const JSONFormatter = () => {
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
+  const [highlightedOutput, setHighlightedOutput] = useState('');
   const [error, setError] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -34,11 +35,41 @@ const JSONFormatter = () => {
     setDarkMode(!darkMode);
   };
 
+  // Create syntax-highlighted HTML from JSON
+  const highlightJSON = (json) => {
+    if (!json) return '';
+    
+    // Replace with HTML for syntax highlighting
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+      let cls = 'json-number';
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          cls = 'json-key';
+          // Remove quotes and colon from the key
+          match = match.replace(/"|:$/g, '');
+          // Add a specific styling for keys
+          return `<span class="${cls}">"${match}"</span><span class="json-punctuation">:</span>`;
+        } else {
+          cls = 'json-string';
+        }
+      } else if (/true|false/.test(match)) {
+        cls = 'json-boolean';
+      } else if (/null/.test(match)) {
+        cls = 'json-null';
+      }
+      return `<span class="${cls}">${match}</span>`;
+    })
+    // Add syntax highlighting for brackets and commas
+    .replace(/[[\]{}]/g, match => `<span class="json-bracket">${match}</span>`)
+    .replace(/,/g, '<span class="json-punctuation">,</span>');
+  };
+
   // Format JSON
   const formatJSON = () => {
     if (!input.trim()) {
       setError('Пожалуйста, введите JSON для форматирования');
       setOutput('');
+      setHighlightedOutput('');
       return;
     }
 
@@ -46,10 +77,12 @@ const JSONFormatter = () => {
       const parsedJSON = JSON.parse(input);
       const formattedJSON = JSON.stringify(parsedJSON, null, 2);
       setOutput(formattedJSON);
+      setHighlightedOutput(highlightJSON(formattedJSON));
       setError('');
     } catch (err) {
       setError(`Ошибка: ${err.message}`);
       setOutput('');
+      setHighlightedOutput('');
     }
   };
 
@@ -76,27 +109,7 @@ const JSONFormatter = () => {
 
   // Add a sample JSON for demonstration
   const addSampleJSON = () => {
-    const sampleJSON = `{
-  "name": "John Doe",
-  "age": 30,
-  "isActive": true,
-  "address": {
-    "street": "123 Main St",
-    "city": "New York",
-    "zipCode": "10001"
-  },
-  "phoneNumbers": [
-    {
-      "type": "home",
-      "number": "212-555-1234"
-    },
-    {
-      "type": "work",
-      "number": "646-555-4567"
-    }
-  ],
-  "children": null
-}`;
+    const sampleJSON = `{"name":"John Doe","age":30,"isActive":true,"address":{"street":"123 Main St","city":"New York","zipCode":"10001"},"phoneNumbers":[{"type":"home","number":"212-555-1234"},{"type":"work","number":"646-555-4567"}],"children":null}`;
     setInput(sampleJSON);
   };
 
@@ -104,6 +117,7 @@ const JSONFormatter = () => {
   const clearAll = () => {
     setInput('');
     setOutput('');
+    setHighlightedOutput('');
     setError('');
   };
 
@@ -175,14 +189,13 @@ const JSONFormatter = () => {
                 </button>
               )}
             </div>
-            <pre 
+            <div 
               className={`p-4 rounded border h-96 overflow-auto font-mono ${
                 darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'
               }`}
               aria-label="Отформатированный JSON"
-            >
-              {output}
-            </pre>
+              dangerouslySetInnerHTML={{ __html: highlightedOutput }}
+            />
           </div>
         </div>
 
