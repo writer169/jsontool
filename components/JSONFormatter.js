@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, ArrowRight } from 'lucide-react';
+import { Moon, Sun, ArrowRight, X } from 'lucide-react';
 
 const JSONFormatter = () => {
   const [input, setInput] = useState('');
@@ -23,6 +23,12 @@ const JSONFormatter = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('darkMode', darkMode);
+      // Применяем класс к document.body для глобального контроля темы
+      if (darkMode) {
+        document.body.classList.add('dark-mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+      }
     }
   }, [darkMode]);
 
@@ -78,6 +84,12 @@ const JSONFormatter = () => {
     } catch (err) {
       console.error('Ошибка чтения из буфера обмена:', err);
     }
+  };
+
+  // Очистка поля ввода
+  const clearInput = () => {
+    setInput('');
+    setError('');
   };
 
   const goBack = () => {
@@ -155,60 +167,68 @@ const JSONFormatter = () => {
   };
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>
-      <main className={`${showResult ? '' : 'p-4'}`}>
+    <div className="app-container">
+      <main className={`${showResult ? 'result-view' : 'input-view'}`}>
         {showResult ? (
-          <div>
-            {/* Фиксированная кнопка "Вернуться к вводу" */}
+          <div className="result-container">
             <button 
               onClick={goBack} 
-              className="fixed top-0 left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white z-10"
+              className="back-button"
             >
               Вернуться к вводу
             </button>
-            {/* Контейнер результата: без боковых отступов, белый фон в дневном режиме */}
-            <div className="mt-12 w-full py-4 px-0 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm overflow-auto">
+            <div className="result-content">
               {renderJSONNode(parsedData)}
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center">
-            {/* Кнопка "Вставить из буфера" по центру */}
-            <button 
-              onClick={pasteFromClipboard}
-              className="mb-4 px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
-            >
-              Вставить из буфера
-            </button>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') formatJSON();
-              }}
-              className="w-full p-4 rounded border h-96 font-mono bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700"
-              placeholder="Вставьте или введите JSON здесь..."
-              aria-label="Поле ввода JSON"
-            />
-            {/* Кнопка в виде стрелки для ручного форматирования */}
+          <div className="input-container">
+            <div className="input-actions">
+              <button 
+                onClick={pasteFromClipboard}
+                className="paste-button"
+              >
+                Вставить из буфера
+              </button>
+            </div>
+            <div className="textarea-wrapper">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') formatJSON();
+                }}
+                className="json-input"
+                placeholder="Вставьте или введите JSON здесь..."
+                aria-label="Поле ввода JSON"
+              />
+              {input && (
+                <button 
+                  onClick={clearInput}
+                  className="clear-button"
+                  aria-label="Очистить поле ввода"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
             <button 
               onClick={() => formatJSON()}
-              className="fixed bottom-20 left-1/2 transform -translate-x-1/2 p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+              className="format-button"
             >
               <ArrowRight size={24} />
             </button>
           </div>
         )}
         {error && (
-          <div className="mt-4 p-3 bg-red-100 border border-red-300 text-red-600 rounded" role="alert">
+          <div className="error-message" role="alert">
             {error}
           </div>
         )}
       </main>
-      {/* Кнопка переключения темы, фиксирована внизу */}
       <button 
         onClick={() => setDarkMode(!darkMode)} 
-        className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 p-2 rounded-full ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+        className="theme-toggle"
         aria-label={darkMode ? "Включить светлую тему" : "Включить темную тему"}
       >
         {darkMode ? <Sun size={20} /> : <Moon size={20} />}
