@@ -8,14 +8,13 @@ const JSONFormatter = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
+  const [showResult, setShowResult] = useState(false); // Флаг для отображения результата на всю страницу
 
-  // Effect to check system preference for dark mode
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
       setDarkMode(isDarkMode);
       
-      // Store dark mode preference in localStorage
       const storedDarkMode = localStorage.getItem('darkMode');
       if (storedDarkMode !== null) {
         setDarkMode(storedDarkMode === 'true');
@@ -23,19 +22,26 @@ const JSONFormatter = () => {
     }
   }, []);
 
-  // Update localStorage when dark mode changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('darkMode', darkMode);
     }
   }, [darkMode]);
 
-  // Toggle dark mode
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
   };
 
-  // Format JSON
+  // Функция для чтения из буфера обмена
+  const pasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setInput(text);
+    } catch (err) {
+      console.error('Ошибка чтения из буфера обмена:', err);
+    }
+  };
+
   const formatJSON = () => {
     if (!input.trim()) {
       setError('Пожалуйста, введите JSON для форматирования');
@@ -48,17 +54,19 @@ const JSONFormatter = () => {
       setParsedData(parsedJSON);
       setError('');
       
-      // Initialize expanded nodes for the first two levels
+      // Инициализация раскрытых узлов для первых двух уровней
       const initialExpandedNodes = new Set();
       expandInitialNodes(parsedJSON, '', initialExpandedNodes, 0, 2);
       setExpandedNodes(initialExpandedNodes);
+      
+      // После успешного форматирования скрываем форму ввода
+      setShowResult(true);
     } catch (err) {
       setError(`Ошибка: ${err.message}`);
       setParsedData(null);
     }
   };
 
-  // Recursively expand nodes up to the specified level
   const expandInitialNodes = (data, path, expandedSet, currentLevel, maxLevel) => {
     if (currentLevel >= maxLevel) return;
     
@@ -72,7 +80,6 @@ const JSONFormatter = () => {
     }
   };
 
-  // Toggle node expansion
   const toggleNode = (path) => {
     const newExpandedNodes = new Set(expandedNodes);
     if (newExpandedNodes.has(path)) {
@@ -83,14 +90,12 @@ const JSONFormatter = () => {
     setExpandedNodes(newExpandedNodes);
   };
 
-  // Format JSON on pressing Ctrl+Enter or Cmd+Enter
   const handleKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       formatJSON();
     }
   };
 
-  // Copy formatted JSON to clipboard
   const copyToClipboard = () => {
     if (parsedData) {
       navigator.clipboard.writeText(JSON.stringify(parsedData, null, 2))
@@ -104,20 +109,22 @@ const JSONFormatter = () => {
     }
   };
 
-  // Add a sample JSON for demonstration
   const addSampleJSON = () => {
     const sampleJSON = `{"name":"John Doe","age":30,"isActive":true,"address":{"street":"123 Main St","city":"New York","zipCode":"10001"},"phoneNumbers":[{"type":"home","number":"212-555-1234"},{"type":"work","number":"646-555-4567"}],"children":null}`;
     setInput(sampleJSON);
   };
 
-  // Clear both input and output
   const clearAll = () => {
     setInput('');
     setParsedData(null);
     setError('');
   };
 
-  // Render a JSON node
+  // Функция для возврата к форме ввода
+  const goBack = () => {
+    setShowResult(false);
+  };
+
   const renderJSONNode = (data, path = '', depth = 0) => {
     if (data === null) {
       return <span className="json-null ml-2">null</span>;
@@ -129,10 +136,9 @@ const JSONFormatter = () => {
         typeof data === 'number' ? 'json-number' :
         typeof data === 'boolean' ? 'json-boolean' : '';
       
-      return <span className={`${valueClass} ml-2`}>{
-        typeof data === 'string' ? `"${data}"` : 
-        String(data)
-      }</span>;
+      return <span className={`${valueClass} ml-2`}>
+        {typeof data === 'string' ? `"${data}"` : String(data)}
+      </span>;
     }
     
     const isArray = Array.isArray(data);
@@ -221,90 +227,112 @@ const JSONFormatter = () => {
       </header>
 
       <main className="flex-grow container mx-auto p-6 max-w-6xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex flex-col">
-            <div className="flex justify-between items-center mb-2">
-              <label className="font-semibold">Введите JSON:</label>
-              <div className="flex space-x-2">
-                <button 
-                  onClick={addSampleJSON} 
-                  className={`px-3 py-1 rounded text-sm ${
-                    darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
-                  }`}
-                >
-                  Пример
-                </button>
-                <button 
-                  onClick={clearAll} 
-                  className={`px-3 py-1 rounded text-sm ${
-                    darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
-                  }`}
-                >
-                  Очистить
-                </button>
-              </div>
-            </div>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className={`p-4 rounded border h-96 font-mono ${
-                darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'
-              }`}
-              placeholder="Введите сырой JSON здесь..."
-              aria-label="Поле ввода JSON"
-            />
-            <div className="mt-2 text-sm text-gray-500">
-              Подсказка: Используйте Ctrl+Enter для быстрого форматирования
-            </div>
-          </div>
-
-          <div className="flex flex-col">
-            <div className="flex justify-between items-center mb-2">
-              <label className="font-semibold">Иерархический просмотр JSON:</label>
-              {parsedData && (
-                <button 
-                  onClick={copyToClipboard} 
-                  className={`flex items-center px-3 py-1 rounded text-sm ${
-                    darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
-                  }`}
-                  aria-label="Копировать отформатированный JSON"
-                >
-                  <Copy size={16} className="mr-1" />
-                  {copySuccess ? "Скопировано!" : "Копировать"}
-                </button>
-              )}
-            </div>
-            
-            <div className="mb-3">
+        {showResult ? (
+          // Отображение результата на всю страницу после форматирования
+          <div>
+            <div className="flex justify-end mb-4">
               <button 
-                onClick={formatJSON} 
-                className={`px-4 py-2 rounded font-semibold ${
-                  darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
-                } text-white`}
-                aria-label="Форматировать JSON"
+                onClick={goBack} 
+                className="px-3 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white"
               >
-                Форматировать JSON
+                Вернуться к вводу
               </button>
             </div>
-            
             <div 
-              className={`p-4 rounded border h-96 overflow-auto font-mono ${
-                darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'
-              }`}
+              className="p-4 rounded border overflow-auto font-mono bg-white text-gray-800 dark:bg-gray-800 dark:text-white"
               aria-label="Отформатированный JSON"
             >
-              {parsedData ? (
-                renderJSONNode(parsedData)
-              ) : (
-                <div className="text-gray-400 italic">
-                  Здесь будет отображаться структурированный JSON
-                </div>
-              )}
+              {renderJSONNode(parsedData)}
             </div>
           </div>
-        </div>
+        ) : (
+          // Исходный вариант с двумя колонками: ввод и предпросмотр результата
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center mb-2">
+                <label className="font-semibold">Введите JSON:</label>
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={pasteFromClipboard}
+                    className={`px-3 py-1 rounded ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+                  >
+                    Вставить из буфера
+                  </button>
+                  <button 
+                    onClick={addSampleJSON} 
+                    className={`px-3 py-1 rounded text-sm ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+                  >
+                    Пример
+                  </button>
+                  <button 
+                    onClick={clearAll} 
+                    className={`px-3 py-1 rounded text-sm ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+                  >
+                    Очистить
+                  </button>
+                </div>
+              </div>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className={`p-4 rounded border h-96 font-mono ${
+                  darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'
+                }`}
+                placeholder="Введите сырой JSON здесь..."
+                aria-label="Поле ввода JSON"
+              />
+              <div className="mt-2 text-sm text-gray-500">
+                Подсказка: Используйте Ctrl+Enter для быстрого форматирования
+              </div>
+            </div>
 
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center mb-2">
+                <label className="font-semibold">Иерархический просмотр JSON:</label>
+                {parsedData && (
+                  <button 
+                    onClick={copyToClipboard} 
+                    className={`flex items-center px-3 py-1 rounded text-sm ${
+                      darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
+                    }`}
+                    aria-label="Копировать отформатированный JSON"
+                  >
+                    <Copy size={16} className="mr-1" />
+                    {copySuccess ? "Скопировано!" : "Копировать"}
+                  </button>
+                )}
+              </div>
+              
+              <div className="mb-3">
+                <button 
+                  onClick={formatJSON} 
+                  className={`px-4 py-2 rounded font-semibold ${
+                    darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'
+                  } text-white`}
+                  aria-label="Форматировать JSON"
+                >
+                  Форматировать JSON
+                </button>
+              </div>
+              
+              <div 
+                className={`p-4 rounded border h-96 overflow-auto font-mono ${
+                  darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'
+                }`}
+                aria-label="Отформатированный JSON"
+              >
+                {parsedData ? (
+                  renderJSONNode(parsedData)
+                ) : (
+                  <div className="text-gray-400 italic">
+                    Здесь будет отображаться структурированный JSON
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {error && (
           <div className="mt-4 p-3 bg-red-100 border border-red-300 text-red-600 rounded" role="alert">
             {error}
