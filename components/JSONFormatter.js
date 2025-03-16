@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, ArrowRight } from 'lucide-react';
 
 const JSONFormatter = () => {
   const [input, setInput] = useState('');
@@ -69,7 +69,7 @@ const JSONFormatter = () => {
     setExpandedNodes(newExpandedNodes);
   };
 
-  // Чтение из буфера и сразу форматирование
+  // Чтение из буфера обмена с автоматическим форматированием
   const pasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -156,18 +156,18 @@ const JSONFormatter = () => {
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>
-      <main className="p-4">
+      <main className={`${showResult ? '' : 'p-4'}`}>
         {showResult ? (
           <div>
-            {/* Кнопка "Вернуться к вводу" фиксирована вверху и отцентрирована */}
+            {/* Фиксированная кнопка "Вернуться к вводу" */}
             <button 
               onClick={goBack} 
               className="fixed top-0 left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white z-10"
             >
               Вернуться к вводу
             </button>
-            {/* Контейнер результата: без боковых отступов, белый фон в дневном режиме, текст уменьшен */}
-            <div className="mt-12 w-full p-4 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm overflow-auto">
+            {/* Контейнер результата: без боковых отступов, белый фон в дневном режиме */}
+            <div className="mt-12 w-full py-4 px-0 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm overflow-auto">
               {renderJSONNode(parsedData)}
             </div>
           </div>
@@ -176,7 +176,7 @@ const JSONFormatter = () => {
             {/* Кнопка "Вставить из буфера" по центру */}
             <button 
               onClick={pasteFromClipboard}
-              className={`mb-4 px-4 py-2 rounded ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+              className="mb-4 px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
             >
               Вставить из буфера
             </button>
@@ -186,10 +186,17 @@ const JSONFormatter = () => {
               onKeyDown={(e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') formatJSON();
               }}
-              className={`w-full p-4 rounded border h-96 font-mono ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-300'}`}
+              className="w-full p-4 rounded border h-96 font-mono bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700"
               placeholder="Вставьте или введите JSON здесь..."
               aria-label="Поле ввода JSON"
             />
+            {/* Кнопка в виде стрелки для ручного форматирования */}
+            <button 
+              onClick={() => formatJSON()}
+              className="fixed bottom-20 left-1/2 transform -translate-x-1/2 p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              <ArrowRight size={24} />
+            </button>
           </div>
         )}
         {error && (
@@ -198,7 +205,7 @@ const JSONFormatter = () => {
           </div>
         )}
       </main>
-      {/* Кнопка переключения темы, фиксирована внизу и отцентрирована */}
+      {/* Кнопка переключения темы, фиксирована внизу */}
       <button 
         onClick={() => setDarkMode(!darkMode)} 
         className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 p-2 rounded-full ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
