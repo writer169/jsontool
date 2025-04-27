@@ -137,16 +137,24 @@ body {
   border-color: var(--button-primary-bg);
 }
 
-/* URL input wrapper */
-.url-input-wrapper {
+/* URL input container - исправляем расположение кнопки "загрузить" */
+.url-input-container {
   display: flex;
+  flex-direction: column;
   width: 100%;
   gap: 0.5rem;
 }
 
+/* URL input wrapper */
+.url-input-wrapper {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
 /* URL input field */
 .url-input {
-  flex: 1;
+  width: 100%;
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
   border: 1px solid var(--border-color);
@@ -160,8 +168,32 @@ body {
   border-color: var(--button-primary-bg);
 }
 
-/* Fetch button */
+/* URL clear button */
+.url-clear-button {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.url-clear-button:hover {
+  opacity: 1;
+  background-color: var(--button-bg);
+}
+
+/* Fetch button - располагается под полем ввода URL */
 .fetch-button {
+  align-self: center;
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
   background-color: var(--button-primary-bg);
@@ -345,9 +377,8 @@ body {
   flex-direction: column;
 }
 
-/* Context menu trigger button */
-.context-menu-trigger {
-  visibility: hidden;
+/* Показываем точки меню всегда */
+.context-menu-button {
   background: none;
   border: none;
   cursor: pointer;
@@ -358,25 +389,55 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
+  visibility: visible;
 }
 
-.context-menu-trigger:hover {
+.context-menu-button:hover {
   opacity: 1;
   background-color: var(--button-bg);
 }
 
-.json-row:hover .context-menu-trigger {
-  visibility: visible;
+/* Исправляем отображение имени и значения вместе */
+.json-content {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Context menu */
-.context-menu {
+.json-content .json-key + .json-string,
+.json-content .json-key + .json-number,
+.json-content .json-key + .json-boolean,
+.json-content .json-key + .json-null {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Контекстное меню по центру экрана */
+.context-menu-overlay {
   position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
   z-index: 100;
+}
+
+.context-menu {
+  position: relative;
+  z-index: 101;
   min-width: 180px;
+  max-width: 90%;
   background-color: var(--context-menu-bg);
   border-radius: 0.375rem;
-  box-shadow: 0 2px 5px 0 var(--context-menu-shadow), 0 1px 1px 0 var(--context-menu-shadow);
+  box-shadow: 0 2px 10px 0 var(--context-menu-shadow);
   overflow: hidden;
 }
 
