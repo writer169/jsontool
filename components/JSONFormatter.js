@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, ArrowRight, X, MoreVertical, Copy, FileText, Link } from 'lucide-react';
+import { Moon, Sun, ArrowRight, X, MoreVertical, Copy, FileText } from 'lucide-react';
 
 const JSONFormatter = () => {
   const [input, setInput] = useState('');
@@ -34,7 +34,7 @@ const JSONFormatter = () => {
     }
   }, [darkMode]);
 
-  // Close context menu when clicking outside
+  // Закрытие контекстного меню при клике вне его
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(null);
     
@@ -44,7 +44,7 @@ const JSONFormatter = () => {
     }
   }, [contextMenu]);
 
-  // Format JSON
+  // Форматирование JSON
   const formatJSON = (textInput) => {
     const jsonText = textInput !== undefined ? textInput : input;
     if (!jsonText.trim()) {
@@ -66,7 +66,7 @@ const JSONFormatter = () => {
     }
   };
 
-  // Fetch JSON from URL
+  // Загрузка JSON с URL
   const fetchFromUrl = async () => {
     if (!url.trim()) {
       setError('Пожалуйста, введите URL');
@@ -114,19 +114,20 @@ const JSONFormatter = () => {
     setExpandedNodes(newExpandedNodes);
   };
 
-  // Context menu handlers
+  // Открытие контекстного меню
   const handleShowContextMenu = (e, path, value, key) => {
     e.stopPropagation();
+    e.preventDefault();
+    
+    // Отображаем посередине экрана
     setContextMenu({
-      x: e.clientX,
-      y: e.clientY,
       path,
       value,
       key
     });
   };
 
-  // Copy functions
+  // Копирование в буфер обмена
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -157,7 +158,7 @@ const JSONFormatter = () => {
     }
   };
 
-  // Clipboard and input handling
+  // Работа с буфером обмена и полями ввода
   const pasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -178,7 +179,7 @@ const JSONFormatter = () => {
     setShowResult(false);
   };
 
-  // Truncate strings for display
+  // Обрезка длинных строк для отображения
   const truncateIfNeeded = (str, maxLength = 150) => {
     if (typeof str === 'string' && str.length > maxLength) {
       return str.substring(0, maxLength) + '...';
@@ -186,15 +187,18 @@ const JSONFormatter = () => {
     return str;
   };
 
-  // Render JSON nodes
+  // Отрисовка узлов JSON
   const renderJSONNode = (data, path = '', depth = 0, parentKey = '') => {
     if (data === null) {
       return (
         <div className="json-row">
-          <span className="json-null">null</span>
+          <div className="json-content">
+            <span className="json-null">null</span>
+          </div>
           <button 
-            className="context-menu-trigger" 
+            className="context-menu-button" 
             onClick={(e) => handleShowContextMenu(e, path, data, parentKey)}
+            aria-label="Открыть меню"
           >
             <MoreVertical size={16} />
           </button>
@@ -213,10 +217,13 @@ const JSONFormatter = () => {
       
       return (
         <div className="json-row">
-          <span className={valueClass}>{displayValue}</span>
+          <div className="json-content">
+            <span className={valueClass}>{displayValue}</span>
+          </div>
           <button 
-            className="context-menu-trigger" 
+            className="context-menu-button" 
             onClick={(e) => handleShowContextMenu(e, path, data, parentKey)}
+            aria-label="Открыть меню"
           >
             <MoreVertical size={16} />
           </button>
@@ -233,15 +240,18 @@ const JSONFormatter = () => {
     
     return (
       <div className="json-object-container">
-        <div 
-          className="json-row"
-          onClick={(e) => {
-            e.stopPropagation();
-            hasChildren && toggleNode(path);
-          }}
-        >
-          <div className="flex items-center">
-            {hasChildren ? (isExpanded ? <span>&#9660;</span> : <span>&#9654;</span>) : <span className="w-4" />}
+        <div className="json-row">
+          <div 
+            className="json-content"
+            onClick={(e) => {
+              e.stopPropagation();
+              hasChildren && toggleNode(path);
+            }}
+          >
+            {hasChildren && (
+              <span className="expander">{isExpanded ? '▼' : '►'}</span>
+            )}
+            
             {path ? (
               <span className="json-key">{nodeKey}</span>
             ) : (
@@ -249,15 +259,18 @@ const JSONFormatter = () => {
                 {isArray ? `ARRAY [${childrenCount}]` : `OBJECT {${childrenCount}}`}
               </span>
             )}
+            
             {!isExpanded && hasChildren && (
-              <span className="text-gray-500 ml-2">
+              <span className="json-preview">
                 {isArray ? `[${childrenCount}]` : `{${childrenCount}}`}
               </span>
             )}
           </div>
+          
           <button 
-            className="context-menu-trigger" 
+            className="context-menu-button" 
             onClick={(e) => handleShowContextMenu(e, path, data, nodeKey)}
+            aria-label="Открыть меню"
           >
             <MoreVertical size={16} />
           </button>
@@ -275,14 +288,49 @@ const JSONFormatter = () => {
               Object.keys(data).map((key) => (
                 <div key={key} className="json-item">
                   {typeof data[key] === 'object' && data[key] !== null ? (
-                    <div className="json-object-key">
-                      <span className="json-key">{key}</span>
-                      {renderJSONNode(data[key], path ? `${path}.${key}` : key, depth + 1, key)}
+                    <div className="json-object-property">
+                      <div className="json-row">
+                        <div 
+                          className="json-content"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleNode(path ? `${path}.${key}` : key);
+                          }}
+                        >
+                          <span className="expander">
+                            {expandedNodes.has(path ? `${path}.${key}` : key) ? '▼' : '►'}
+                          </span>
+                          <span className="json-key">{key}</span>
+                        </div>
+                        <button 
+                          className="context-menu-button" 
+                          onClick={(e) => handleShowContextMenu(e, path ? `${path}.${key}` : key, data[key], key)}
+                          aria-label="Открыть меню"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+                      </div>
+                      {expandedNodes.has(path ? `${path}.${key}` : key) && (
+                        <div className="json-children">
+                          {renderJSONNode(data[key], path ? `${path}.${key}` : key, depth + 1, key)}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="json-property">
-                      <span className="json-key">{key}:</span>
-                      {renderJSONNode(data[key], path ? `${path}.${key}` : key, depth + 1, key)}
+                      <div className="json-row">
+                        <div className="json-content">
+                          <span className="json-key">{key}:</span>
+                          {renderValueInline(data[key])}
+                        </div>
+                        <button 
+                          className="context-menu-button" 
+                          onClick={(e) => handleShowContextMenu(e, path ? `${path}.${key}` : key, data[key], key)}
+                          aria-label="Открыть меню"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -292,6 +340,23 @@ const JSONFormatter = () => {
         )}
       </div>
     );
+  };
+
+  // Вспомогательная функция для отображения значений в одной строке
+  const renderValueInline = (value) => {
+    if (value === null) {
+      return <span className="json-null">null</span>;
+    }
+    
+    const valueClass = 
+      typeof value === 'string' ? 'json-string' :
+      typeof value === 'number' ? 'json-number' :
+      typeof value === 'boolean' ? 'json-boolean' : '';
+    
+    const displayValue = 
+      typeof value === 'string' ? `"${truncateIfNeeded(value)}"` : String(value);
+    
+    return <span className={valueClass}>{displayValue}</span>;
   };
 
   return (
@@ -322,16 +387,27 @@ const JSONFormatter = () => {
               </button>
             </div>
             
-            {/* URL input field */}
-            <div className="url-input-wrapper">
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                className="url-input"
-                placeholder="Введите URL для загрузки JSON..."
-                aria-label="URL для загрузки JSON"
-              />
+            {/* Поле ввода URL */}
+            <div className="url-input-container">
+              <div className="url-input-wrapper">
+                <input
+                  type="text"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="url-input"
+                  placeholder="Введите URL для загрузки JSON..."
+                  aria-label="URL для загрузки JSON"
+                />
+                {url && (
+                  <button 
+                    onClick={() => setUrl('')}
+                    className="url-clear-button"
+                    aria-label="Очистить URL"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
               <button 
                 onClick={fetchFromUrl}
                 className="fetch-button"
@@ -377,32 +453,27 @@ const JSONFormatter = () => {
         )}
       </main>
       
-      {/* Context menu */}
+      {/* Контекстное меню */}
       {contextMenu && (
-        <div 
-          className="context-menu"
-          style={{ 
-            top: `${contextMenu.y}px`, 
-            left: `${contextMenu.x}px`
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {contextMenu.key && (
-            <button className="context-menu-item" onClick={copyName}>
+        <div className="context-menu-overlay">
+          <div className="context-menu">
+            {contextMenu.key && (
+              <button className="context-menu-item" onClick={copyName}>
+                <Copy size={14} />
+                <span>Копировать имя</span>
+              </button>
+            )}
+            <button className="context-menu-item" onClick={copyValue}>
               <Copy size={14} />
-              <span>Копировать имя</span>
+              <span>Копировать значение</span>
             </button>
-          )}
-          <button className="context-menu-item" onClick={copyValue}>
-            <Copy size={14} />
-            <span>Копировать значение</span>
-          </button>
-          {contextMenu.path && (
-            <button className="context-menu-item" onClick={copyPath}>
-              <FileText size={14} />
-              <span>Копировать путь</span>
-            </button>
-          )}
+            {contextMenu.path && (
+              <button className="context-menu-item" onClick={copyPath}>
+                <FileText size={14} />
+                <span>Копировать путь</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
       
