@@ -368,8 +368,13 @@ body {
 
 .json-property {
   display: flex;
-  align-items: baseline;
-  gap: 0.25rem;
+  flex-direction: column;
+  width: 100%;
+}
+
+.json-property .json-content {
+  width: 100%;
+  padding-left: 0;
 }
 
 .json-object-key {
@@ -401,19 +406,44 @@ body {
 .json-content {
   display: flex;
   flex: 1;
+  flex-wrap: wrap;
   align-items: baseline;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.json-content .json-key + .json-string,
-.json-content .json-key + .json-number,
-.json-content .json-key + .json-boolean,
-.json-content .json-key + .json-null {
-  white-space: normal;
-  overflow-wrap: anywhere;
+/* Стили для ключа JSON */
+.json-key {
+  color: var(--json-key-color);
+  font-weight: bold;
+  margin-right: 0.25rem;
+}
+
+/* Стили для значений JSON с переносом строк */
+.json-string, .json-number, .json-boolean, .json-null {
+  overflow-wrap: break-word;
   word-break: break-word;
+  max-width: 100%;
+  display: inline;
+}
+
+/* Стили для строковых значений */
+.json-string {
+  color: var(--json-string-color);
+  white-space: pre-wrap;
+}
+
+.json-number {
+  color: var(--json-number-color);
+}
+
+.json-boolean {
+  color: var(--json-boolean-color);
+  font-weight: bold;
+}
+
+.json-null {
+  color: var(--json-null-color);
+  font-weight: bold;
 }
 
 /* Контекстное меню по центру экрана */
@@ -492,35 +522,7 @@ body {
   background-color: var(--button-hover);
 }
 
-/* JSON syntax highlighting */
-.json-key {
-  color: var(--json-key-color);
-  font-weight: bold;
-  margin-right: 0.25rem;
-}
-
-.json-string {
-  color: var(--json-string-color);
-  overflow-wrap: break-word;
-  word-break: break-word;
-  max-width: calc(100vw - 4rem);
-  white-space: pre-wrap;
-}
-
-.json-number {
-  color: var(--json-number-color);
-}
-
-.json-boolean {
-  color: var(--json-boolean-color);
-  font-weight: bold;
-}
-
-.json-null {
-  color: var(--json-null-color);
-  font-weight: bold;
-}
-
+/* JSON bracket and punctuation */
 .json-bracket {
   color: var(--json-bracket-color);
 }
