@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, ArrowRight, X } from 'lucide-react';
+import { Moon, Sun, ArrowRight, X, MoreVertical, Copy, FileText, Link } from 'lucide-react';
 
 const JSONFormatter = () => {
   const [input, setInput] = useState('');
+  const [url, setUrl] = useState('');
   const [parsedData, setParsedData] = useState(null);
   const [error, setError] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [showResult, setShowResult] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -23,7 +26,6 @@ const JSONFormatter = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('darkMode', darkMode);
-      // Применяем класс к document.body для глобального контроля темы
       if (darkMode) {
         document.body.classList.add('dark-mode');
       } else {
@@ -32,7 +34,17 @@ const JSONFormatter = () => {
     }
   }, [darkMode]);
 
-  // Форматирование JSON
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu]);
+
+  // Format JSON
   const formatJSON = (textInput) => {
     const jsonText = textInput !== undefined ? textInput : input;
     if (!jsonText.trim()) {
@@ -51,6 +63,33 @@ const JSONFormatter = () => {
     } catch (err) {
       setError(`Ошибка: ${err.message}`);
       setParsedData(null);
+    }
+  };
+
+  // Fetch JSON from URL
+  const fetchFromUrl = async () => {
+    if (!url.trim()) {
+      setError('Пожалуйста, введите URL');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ошибка! Статус: ${response.status}`);
+      }
+      
+      const data = await response.text();
+      setInput(data);
+      formatJSON(data);
+    } catch (err) {
+      setError(`Ошибка при загрузке данных: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -75,7 +114,50 @@ const JSONFormatter = () => {
     setExpandedNodes(newExpandedNodes);
   };
 
-  // Чтение из буфера обмена с автоматическим форматированием
+  // Context menu handlers
+  const handleShowContextMenu = (e, path, value, key) => {
+    e.stopPropagation();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      path,
+      value,
+      key
+    });
+  };
+
+  // Copy functions
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setContextMenu(null);
+    } catch (err) {
+      console.error('Ошибка при копировании в буфер обмена:', err);
+    }
+  };
+
+  const copyName = () => {
+    if (contextMenu && contextMenu.key) {
+      copyToClipboard(contextMenu.key);
+    }
+  };
+
+  const copyValue = () => {
+    if (contextMenu) {
+      const value = typeof contextMenu.value === 'object' && contextMenu.value !== null
+        ? JSON.stringify(contextMenu.value, null, 2)
+        : String(contextMenu.value);
+      copyToClipboard(value);
+    }
+  };
+
+  const copyPath = () => {
+    if (contextMenu && contextMenu.path) {
+      copyToClipboard(contextMenu.path);
+    }
+  };
+
+  // Clipboard and input handling
   const pasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -86,9 +168,9 @@ const JSONFormatter = () => {
     }
   };
 
-  // Очистка поля ввода
   const clearInput = () => {
     setInput('');
+    setUrl('');
     setError('');
   };
 
@@ -96,18 +178,50 @@ const JSONFormatter = () => {
     setShowResult(false);
   };
 
-  const renderJSONNode = (data, path = '', depth = 0) => {
-    if (data === null) {
-      return <span className="json-null ml-2">null</span>;
+  // Truncate strings for display
+  const truncateIfNeeded = (str, maxLength = 150) => {
+    if (typeof str === 'string' && str.length > maxLength) {
+      return str.substring(0, maxLength) + '...';
     }
+    return str;
+  };
+
+  // Render JSON nodes
+  const renderJSONNode = (data, path = '', depth = 0, parentKey = '') => {
+    if (data === null) {
+      return (
+        <div className="json-row">
+          <span className="json-null">null</span>
+          <button 
+            className="context-menu-trigger" 
+            onClick={(e) => handleShowContextMenu(e, path, data, parentKey)}
+          >
+            <MoreVertical size={16} />
+          </button>
+        </div>
+      );
+    }
+    
     if (typeof data !== 'object') {
       const valueClass = 
         typeof data === 'string' ? 'json-string' :
         typeof data === 'number' ? 'json-number' :
         typeof data === 'boolean' ? 'json-boolean' : '';
-      return <span className={`${valueClass} ml-2`}>
-        {typeof data === 'string' ? `"${data}"` : String(data)}
-      </span>;
+      
+      const displayValue = 
+        typeof data === 'string' ? `"${truncateIfNeeded(data)}"` : String(data);
+      
+      return (
+        <div className="json-row">
+          <span className={valueClass}>{displayValue}</span>
+          <button 
+            className="context-menu-trigger" 
+            onClick={(e) => handleShowContextMenu(e, path, data, parentKey)}
+          >
+            <MoreVertical size={16} />
+          </button>
+        </div>
+      );
     }
     
     const isArray = Array.isArray(data);
@@ -115,46 +229,60 @@ const JSONFormatter = () => {
     const isExpanded = expandedNodes.has(path);
     const hasChildren = items.length > 0;
     const childrenCount = items.length;
-    const paddingLeft = `${depth * 1.5}rem`;
+    const nodeKey = path.split('.').pop() || '';
     
     return (
-      <div className="flex flex-col">
+      <div className="json-object-container">
         <div 
-          className="flex items-center cursor-pointer"
-          style={{ paddingLeft }}
-          onClick={() => hasChildren && toggleNode(path)}
+          className="json-row"
+          onClick={(e) => {
+            e.stopPropagation();
+            hasChildren && toggleNode(path);
+          }}
         >
-          {hasChildren ? (isExpanded ? <span>&#9660;</span> : <span>&#9654;</span>) : <span className="w-4" />}
-          {path ? (
-            <span className="json-key">{path.split('.').pop()}</span>
-          ) : (
-            <span className={isArray ? "json-bracket" : "json-key"}>
-              {isArray ? `ARRAY [${childrenCount}]` : `OBJECT {${childrenCount}}`}
-            </span>
-          )}
-          {!isExpanded && hasChildren && (
-            <span className="text-gray-500 ml-2">
-              {isArray ? `[${childrenCount}]` : `{${childrenCount}}`}
-            </span>
-          )}
+          <div className="flex items-center">
+            {hasChildren ? (isExpanded ? <span>&#9660;</span> : <span>&#9654;</span>) : <span className="w-4" />}
+            {path ? (
+              <span className="json-key">{nodeKey}</span>
+            ) : (
+              <span className={isArray ? "json-bracket" : "json-key"}>
+                {isArray ? `ARRAY [${childrenCount}]` : `OBJECT {${childrenCount}}`}
+              </span>
+            )}
+            {!isExpanded && hasChildren && (
+              <span className="text-gray-500 ml-2">
+                {isArray ? `[${childrenCount}]` : `{${childrenCount}}`}
+              </span>
+            )}
+          </div>
+          <button 
+            className="context-menu-trigger" 
+            onClick={(e) => handleShowContextMenu(e, path, data, nodeKey)}
+          >
+            <MoreVertical size={16} />
+          </button>
         </div>
+        
         {isExpanded && hasChildren && (
-          <div className="ml-4">
+          <div className="json-children">
             {isArray ? (
               items.map((item, index) => (
-                <div key={index} className="flex flex-col">
-                  {renderJSONNode(item, `${path}[${index}]`, depth + 1)}
+                <div key={index} className="json-item">
+                  {renderJSONNode(item, `${path}[${index}]`, depth + 1, index.toString())}
                 </div>
               ))
             ) : (
               Object.keys(data).map((key) => (
-                <div key={key} className="flex flex-col">
+                <div key={key} className="json-item">
                   {typeof data[key] === 'object' && data[key] !== null ? (
-                    renderJSONNode(data[key], path ? `${path}.${key}` : key, depth + 1)
-                  ) : (
-                    <div className="flex items-center" style={{ paddingLeft: `${(depth + 1) * 1.5}rem` }}>
+                    <div className="json-object-key">
                       <span className="json-key">{key}</span>
-                      {renderJSONNode(data[key])}
+                      {renderJSONNode(data[key], path ? `${path}.${key}` : key, depth + 1, key)}
+                    </div>
+                  ) : (
+                    <div className="json-property">
+                      <span className="json-key">{key}:</span>
+                      {renderJSONNode(data[key], path ? `${path}.${key}` : key, depth + 1, key)}
                     </div>
                   )}
                 </div>
@@ -171,12 +299,14 @@ const JSONFormatter = () => {
       <main className={`${showResult ? 'result-view' : 'input-view'}`}>
         {showResult ? (
           <div className="result-container">
-            <button 
-              onClick={goBack} 
-              className="back-button"
-            >
-              Вернуться к вводу
-            </button>
+            <div className="header-bar">
+              <button 
+                onClick={goBack} 
+                className="back-button"
+              >
+                Вернуться к вводу
+              </button>
+            </div>
             <div className="result-content">
               {renderJSONNode(parsedData)}
             </div>
@@ -186,11 +316,31 @@ const JSONFormatter = () => {
             <div className="input-actions">
               <button 
                 onClick={pasteFromClipboard}
-                className="paste-button"
+                className="action-button"
               >
                 Вставить из буфера
               </button>
             </div>
+            
+            {/* URL input field */}
+            <div className="url-input-wrapper">
+              <input
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="url-input"
+                placeholder="Введите URL для загрузки JSON..."
+                aria-label="URL для загрузки JSON"
+              />
+              <button 
+                onClick={fetchFromUrl}
+                className="fetch-button"
+                disabled={loading}
+              >
+                {loading ? 'Загрузка...' : 'Загрузить'}
+              </button>
+            </div>
+            
             <div className="textarea-wrapper">
               <textarea
                 value={input}
@@ -226,6 +376,36 @@ const JSONFormatter = () => {
           </div>
         )}
       </main>
+      
+      {/* Context menu */}
+      {contextMenu && (
+        <div 
+          className="context-menu"
+          style={{ 
+            top: `${contextMenu.y}px`, 
+            left: `${contextMenu.x}px`
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.key && (
+            <button className="context-menu-item" onClick={copyName}>
+              <Copy size={14} />
+              <span>Копировать имя</span>
+            </button>
+          )}
+          <button className="context-menu-item" onClick={copyValue}>
+            <Copy size={14} />
+            <span>Копировать значение</span>
+          </button>
+          {contextMenu.path && (
+            <button className="context-menu-item" onClick={copyPath}>
+              <FileText size={14} />
+              <span>Копировать путь</span>
+            </button>
+          )}
+        </div>
+      )}
+      
       <button 
         onClick={() => setDarkMode(!darkMode)} 
         className="theme-toggle"
