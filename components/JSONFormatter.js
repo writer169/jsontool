@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, ArrowRight, X, MoreVertical, Copy, FileText } from 'lucide-react';
+import { Moon, Sun, ArrowRight, X, MoreVertical, Copy, FileText, CheckCircle } from 'lucide-react';
 
 const JSONFormatter = () => {
   const [input, setInput] = useState('');
   const [url, setUrl] = useState('');
   const [parsedData, setParsedData] = useState(null);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState(new Set());
   const [showResult, setShowResult] = useState(false);
@@ -44,18 +45,28 @@ const JSONFormatter = () => {
     }
   }, [contextMenu]);
 
+  // Очистка сообщений через 5 секунд
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
   // Форматирование JSON
   const formatJSON = (textInput) => {
     const jsonText = textInput !== undefined ? textInput : input;
     if (!jsonText.trim()) {
       setError('Пожалуйста, введите JSON для форматирования');
       setParsedData(null);
+      setSuccess('');
       return;
     }
     try {
       const parsedJSON = JSON.parse(jsonText);
       setParsedData(parsedJSON);
       setError('');
+      setSuccess('');
       const initialExpandedNodes = new Set();
       expandInitialNodes(parsedJSON, '', initialExpandedNodes, 0, 2);
       setExpandedNodes(initialExpandedNodes);
@@ -63,6 +74,7 @@ const JSONFormatter = () => {
     } catch (err) {
       setError(`Ошибка: ${err.message}`);
       setParsedData(null);
+      setSuccess('');
     }
   };
 
@@ -75,19 +87,116 @@ const JSONFormatter = () => {
     
     setLoading(true);
     setError('');
+    setSuccess('');
     
     try {
-      const response = await fetch(url);
+      let response;
+      let data;
       
-      if (!response.ok) {
-        throw new Error(`HTTP ошибка! Статус: ${response.status}`);
+      // Сначала пробуем прямой запрос
+      try {
+        console.log('Попытка прямого запроса...');
+        response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json, text/plain, */*',
+          },
+          mode: 'cors',
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ошибка! Статус: ${response.status}`);
+        }
+        
+        data = await response.text();
+        console.log('Прямой запрос успешен');
+        setSuccess('Данные успешно загружены напрямую');
+        
+      } catch (corsError) {
+        console.log('Прямой запрос не удался, используем серверный прокси...');
+        
+        // Используем наш серверный прокси
+        try {
+          const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+          response = await fetch(proxyUrl);
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Proxy error: ${response.status}`);
+          }
+          
+          data = await response.text();
+          console.log('Запрос через прокси успешен');
+          setSuccess('Данные успешно загружены через серверный прокси');
+          
+        } catch (proxyError) {
+          console.log('Серверный прокси не сработал, пробуем внешние прокси...');
+          
+          // Если и прокси не работает, пробуем внешние сервисы
+          const externalProxies = [
+            `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+            `https://corsproxy.io/?${encodeURIComponent(url)}`
+          ];
+          
+          let externalSuccess = false;
+          
+          for (const externalProxy of externalProxies) {
+            try {
+              response = await fetch(externalProxy);
+              
+              if (response.ok) {
+                if (externalProxy.includes('allorigins.win')) {
+                  const jsonResponse = await response.json();
+                  data = jsonResponse.contents;
+                } else {
+                  data = await response.text();
+                }
+                externalSuccess = true;
+                console.log(`Внешний прокси ${externalProxy} сработал`);
+                setSuccess('Данные успешно загружены через внешний прокси');
+                break;
+              }
+            } catch (extError) {
+              console.log(`Внешний прокси ${externalProxy} не сработал:`, extError);
+              continue;
+            }
+          }
+          
+          if (!externalSuccess) {
+            throw new Error(
+              `Не удалось загрузить данные из ${url}.\n\n` +
+              `Возможные причины:\n` +
+              `• CORS политика API не разрешает браузерные запросы\n` +
+              `• Сервер временно недоступен\n` +
+              `• Неправильный URL или параметры\n\n` +
+              `Попробуйте:\n` +
+              `• Скопировать JSON напрямую из браузера\n` +
+              `• Проверить URL в новой вкладке браузера\n` +
+              `• Использовать расширение для отключения CORS`
+            );
+          }
+        }
       }
       
-      const data = await response.text();
+      // Проверяем и устанавливаем данные
+      if (!data || data.trim() === '') {
+        throw new Error('Получен пустой ответ от сервера');
+      }
+      
+      // Проверяем, является ли ответ JSON
+      try {
+        JSON.parse(data);
+        console.log('Полученные данные являются валидным JSON');
+      } catch (parseError) {
+        console.log('Ответ не является валидным JSON, но отображаем содержимое');
+      }
+      
       setInput(data);
       formatJSON(data);
+      
     } catch (err) {
-      setError(`Ошибка при загрузке данных: ${err.message}`);
+      console.error('Ошибка загрузки:', err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -173,6 +282,7 @@ const JSONFormatter = () => {
     setInput('');
     setUrl('');
     setError('');
+    setSuccess('');
   };
 
   const goBack = () => {
@@ -413,7 +523,14 @@ const JSONFormatter = () => {
                 className="fetch-button"
                 disabled={loading}
               >
-                {loading ? 'Загрузка...' : 'Загрузить'}
+                {loading ? (
+                  <div className="loading-indicator">
+                    <div className="loading-spinner"></div>
+                    Загрузка...
+                  </div>
+                ) : (
+                  'Загрузить'
+                )}
               </button>
             </div>
             
@@ -446,6 +563,16 @@ const JSONFormatter = () => {
             </button>
           </div>
         )}
+        
+        {/* Сообщение об успехе */}
+        {success && (
+          <div className="success-message">
+            <CheckCircle size={16} />
+            {success}
+          </div>
+        )}
+        
+        {/* Сообщение об ошибке */}
         {error && (
           <div className="error-message" role="alert">
             {error}
